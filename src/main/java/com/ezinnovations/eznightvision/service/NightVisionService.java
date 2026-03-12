@@ -3,141 +3,96 @@ package com.ezinnovations.eznightvision.service;
 import com.ezinnovations.eznightvision.EzNightVision;
 import com.ezinnovations.eznightvision.storage.PlayerStateStorage;
 import com.ezinnovations.eznightvision.util.PotionEffectUtil;
-import org.bukkit.Bukkit;
+import com.ezinnovations.eznightvision.util.SchedulerUtil;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.UUID;
-import java.util.function.Consumer;
-
 public final class NightVisionService {
 
-    private static final int VERY_LONG_DURATION = Integer.MAX_VALUE;
-    private static final int AMPLIFIER = 0;
+    private static final int NIGHT_VISION_DURATION_TICKS = 20 * 60 * 60;
+    private static final int NIGHT_VISION_AMPLIFIER = 0;
 
     private final EzNightVision plugin;
     private final PlayerStateStorage playerStateStorage;
+    private final SchedulerUtil schedulerUtil;
 
-    public NightVisionService(EzNightVision plugin, PlayerStateStorage playerStateStorage) {
+    public NightVisionService(EzNightVision plugin, PlayerStateStorage playerStateStorage, SchedulerUtil schedulerUtil) {
         this.plugin = plugin;
         this.playerStateStorage = playerStateStorage;
+        this.schedulerUtil = schedulerUtil;
     }
 
     public boolean toggleForPlayer(Player player) {
-        boolean enabled = isEnabled(player.getUniqueId());
-        boolean newState = !enabled;
+        boolean currentlyEnabled = playerStateStorage.isEnabled(player.getUniqueId());
+        boolean newState = !currentlyEnabled;
         setForPlayer(player, newState);
         return newState;
     }
 
     public void setForPlayer(Player player, boolean enabled) {
-        UUID uuid = player.getUniqueId();
-        playerStateStorage.setEnabled(uuid, enabled);
+        playerStateStorage.setEnabled(player.getUniqueId(), enabled);
 
         if (enabled) {
-            applyIfEnabled(player);
-            return;
+            applyNightVision(player);
+        } else {
+            removeNightVision(player);
         }
-
-        remove(player);
     }
 
     public void applyIfEnabled(Player player) {
-        if (!player.isOnline() || player.isDead()) {
+        if (playerStateStorage.isEnabled(player.getUniqueId())) {
+            applyNightVision(player);
+        } else {
+            removeNightVision(player);
+        }
+    }
+
+    public void reapplyIfTrackingEnabled(final Player player) {
+        if (!playerStateStorage.isEnabled(player.getUniqueId())) {
             return;
         }
 
-        if (!isEnabled(player.getUniqueId())) {
-            remove(player);
+        schedulerUtil.runPlayerTaskLater(player, new Runnable() {
+            @Override
+            public void run() {
+                if (!player.isOnline()) {
+                    return;
+                }
+                applyNightVision(player);
+            }
+        }, 1L);
+    }
+
+    public void scheduleRespawnReapply(final Player player) {
+        if (!playerStateStorage.isEnabled(player.getUniqueId())) {
             return;
         }
 
-        if (hasExpectedNightVision(player)) {
+        schedulerUtil.runPlayerTaskLater(player, new Runnable() {
+            @Override
+            public void run() {
+                if (!player.isOnline()) {
+                    return;
+                }
+                applyNightVision(player);
+            }
+        }, 2L);
+    }
+
+    private void applyNightVision(Player player) {
+        PotionEffect current = player.getPotionEffect(PotionEffectType.NIGHT_VISION);
+        if (PotionEffectUtil.isMatchingNightVision(current, NIGHT_VISION_DURATION_TICKS, NIGHT_VISION_AMPLIFIER)) {
             return;
         }
 
-        PotionEffect effect = PotionEffectUtil.createNightVision(VERY_LONG_DURATION, AMPLIFIER);
+        PotionEffect effect = PotionEffectUtil.createNightVision(NIGHT_VISION_DURATION_TICKS, NIGHT_VISION_AMPLIFIER);
         player.addPotionEffect(effect, true);
     }
 
-    public void remove(Player player) {
-        player.removePotionEffect(PotionEffectType.NIGHT_VISION);
-    }
-
-    public boolean isEnabled(UUID uuid) {
-        return playerStateStorage.isEnabled(uuid);
-    }
-
-    public boolean hasExpectedNightVision(Player player) {
-        PotionEffect existing = player.getPotionEffect(PotionEffectType.NIGHT_VISION);
-        if (existing == null) {
-            return false;
-        }
-
-        if (existing.getAmplifier() != AMPLIFIER) {
-            return false;
-        }
-
-        if (existing.hasParticles()) {
-            return false;
-        }
-
-        if (existing.isAmbient()) {
-            return false;
-        }
-
-        if (existing.getDuration() <= 200) {
-            return false;
-        }
-
-        return !PotionEffectUtil.isIconSupported() || !existing.hasIcon();
-    }
-
-    public boolean isNightVisionType(PotionEffectType type) {
-        return PotionEffectType.NIGHT_VISION.equals(type);
-    }
-
-    /**
-     * Runs a delayed task in a Folia-safe way when available, with Bukkit fallback.
-     */
-    public void runPlayerTaskLater(Player player, long delayTicks, Runnable task) {
-        if (!player.isOnline()) {
-            return;
-        }
-
-        if (tryRunFoliaEntityTask(player, delayTicks, task)) {
-            return;
-        }
-
-        Bukkit.getScheduler().runTaskLater(plugin, task, delayTicks);
-    }
-
-    @SuppressWarnings("unchecked")
-    private boolean tryRunFoliaEntityTask(Player player, long delayTicks, Runnable task) {
-        try {
-            Method getScheduler = player.getClass().getMethod("getScheduler");
-            Object scheduler = getScheduler.invoke(player);
-            if (scheduler == null) {
-                return false;
-            }
-
-            Method runDelayed = scheduler.getClass().getMethod(
-                    "runDelayed",
-                    org.bukkit.plugin.Plugin.class,
-                    Consumer.class,
-                    Runnable.class,
-                    long.class
-            );
-
-            Consumer<Object> consumer = ignored -> task.run();
-            Runnable retired = () -> { };
-            runDelayed.invoke(scheduler, plugin, consumer, retired, delayTicks);
-            return true;
-        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ex) {
-            return false;
+    private void removeNightVision(Player player) {
+        if (player.hasPotionEffect(PotionEffectType.NIGHT_VISION)) {
+            player.removePotionEffect(PotionEffectType.NIGHT_VISION);
         }
     }
 }
