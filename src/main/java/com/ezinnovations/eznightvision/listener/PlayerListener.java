@@ -1,6 +1,5 @@
 package com.ezinnovations.eznightvision.listener;
 
-import com.ezinnovations.eznightvision.EzNightVision;
 import com.ezinnovations.eznightvision.service.NightVisionService;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -9,40 +8,37 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.potion.PotionEffectType;
 
 public final class PlayerListener implements Listener {
 
     private final NightVisionService nightVisionService;
 
-    public PlayerListener(EzNightVision plugin, NightVisionService nightVisionService) {
+    public PlayerListener(NightVisionService nightVisionService) {
         this.nightVisionService = nightVisionService;
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent event) {
-        Player player = event.getPlayer();
-        nightVisionService.applyIfEnabled(player);
+        nightVisionService.applyIfEnabled(event.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onRespawn(PlayerRespawnEvent event) {
-        Player player = event.getPlayer();
-        nightVisionService.runPlayerTaskLater(player, 2L, () -> nightVisionService.applyIfEnabled(player));
+        nightVisionService.scheduleRespawnReapply(event.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onPotionEffectChange(EntityPotionEffectEvent event) {
-        if (!(event.getEntity() instanceof Player player)) {
+    public void onNightVisionRemoved(EntityPotionEffectEvent event) {
+        if (!(event.getEntity() instanceof Player)) {
             return;
         }
 
-        if (event.getModifiedType() == null || !nightVisionService.isNightVisionType(event.getModifiedType())) {
+        if (event.getModifiedType() != PotionEffectType.NIGHT_VISION) {
             return;
         }
 
-        if (event.getAction() == EntityPotionEffectEvent.Action.REMOVED
-                || event.getAction() == EntityPotionEffectEvent.Action.CLEARED) {
-            nightVisionService.runPlayerTaskLater(player, 1L, () -> nightVisionService.applyIfEnabled(player));
-        }
+        Player player = (Player) event.getEntity();
+        nightVisionService.reapplyIfTrackingEnabled(player);
     }
 }

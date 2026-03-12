@@ -12,40 +12,50 @@ public final class MessageUtil {
         this.plugin = plugin;
     }
 
-    public void send(CommandSender sender, String key, String... replacements) {
-        String prefix = color(getRaw("messages.prefix", "&8[&bEzNightVision&8] "));
-        String base = color(getRaw("messages." + key, fallbackForKey(key)));
+    public void send(CommandSender sender, String key) {
+        send(sender, key, null, null);
+    }
 
-        if (replacements.length % 2 == 0) {
-            for (int i = 0; i < replacements.length; i += 2) {
-                String find = replacements[i];
-                String replace = replacements[i + 1];
-                base = base.replace(find, replace);
-            }
+    public void send(CommandSender sender, String key, String placeholder, String value) {
+        String prefix = color(plugin.getConfig().getString("messages.prefix", "&8[&bEzNightVision&8] "));
+        String message = plugin.getConfig().getString("messages." + key, defaultMessage(key));
+
+        if (placeholder != null && value != null) {
+            message = message.replace(placeholder, value);
         }
 
-        sender.sendMessage(prefix + base);
+        sender.sendMessage(prefix + color(message));
     }
 
-    private String getRaw(String path, String fallback) {
-        String value = plugin.getConfig().getString(path);
-        return value != null ? value : fallback;
-    }
-
-    private String fallbackForKey(String key) {
-        return switch (key) {
-            case "enabled-self" -> "&aNight Vision enabled.";
-            case "disabled-self" -> "&cNight Vision disabled.";
-            case "toggled-on" -> "&aNight Vision toggled on.";
-            case "toggled-off" -> "&cNight Vision toggled off.";
-            case "enabled-other" -> "&aEnabled Night Vision for &f%player%&a.";
-            case "disabled-other" -> "&cDisabled Night Vision for &f%player%&c.";
-            case "no-permission" -> "&cYou do not have permission to do that.";
-            case "player-not-found" -> "&cThat player could not be found.";
-            case "console-usage" -> "&cConsole must use /nightvision <on|off> <player>.";
-            case "invalid-usage" -> "&eUsage: /nightvision [on|off] [player]";
-            default -> "&cMissing message: " + key;
-        };
+    private String defaultMessage(String key) {
+        if ("enabled-self".equals(key)) {
+            return "&aNight Vision enabled.";
+        }
+        if ("disabled-self".equals(key)) {
+            return "&cNight Vision disabled.";
+        }
+        if ("toggled-on".equals(key)) {
+            return "&aNight Vision toggled on.";
+        }
+        if ("toggled-off".equals(key)) {
+            return "&cNight Vision toggled off.";
+        }
+        if ("enabled-other".equals(key)) {
+            return "&aEnabled Night Vision for &f%player%&a.";
+        }
+        if ("disabled-other".equals(key)) {
+            return "&cDisabled Night Vision for &f%player%&c.";
+        }
+        if ("no-permission".equals(key)) {
+            return "&cYou do not have permission to do that.";
+        }
+        if ("player-not-found".equals(key)) {
+            return "&cThat player could not be found.";
+        }
+        if ("console-usage".equals(key)) {
+            return "&cConsole must use /nightvision <on|off> <player>.";
+        }
+        return "&eUsage: /nightvision [on|off] [player]";
     }
 
     private String color(String text) {

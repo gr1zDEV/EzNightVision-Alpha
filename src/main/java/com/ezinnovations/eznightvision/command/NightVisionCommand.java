@@ -25,51 +25,70 @@ public final class NightVisionCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
-            if (!(sender instanceof Player player)) {
-                messageUtil.send(sender, "console-usage");
-                return true;
-            }
-
-            if (!sender.hasPermission(PERMISSION_USE)) {
-                messageUtil.send(sender, "no-permission");
-                return true;
-            }
-
-            boolean enabled = nightVisionService.toggleForPlayer(player);
-            messageUtil.send(sender, enabled ? "toggled-on" : "toggled-off");
-            return true;
+            return handleToggleSelf(sender);
         }
 
         String action = args[0].toLowerCase();
-        if (!action.equals("on") && !action.equals("off")) {
+        if (!"on".equals(action) && !"off".equals(action)) {
             messageUtil.send(sender, "invalid-usage");
             return true;
         }
 
-        boolean enable = action.equals("on");
+        boolean enable = "on".equals(action);
 
         if (args.length == 1) {
-            if (!(sender instanceof Player player)) {
-                messageUtil.send(sender, "console-usage");
-                return true;
-            }
+            return handleSetSelf(sender, enable);
+        }
 
-            if (!sender.hasPermission(PERMISSION_USE)) {
-                messageUtil.send(sender, "no-permission");
-                return true;
-            }
+        if (args.length == 2) {
+            return handleSetOther(sender, enable, args[1]);
+        }
 
-            nightVisionService.setForPlayer(player, enable);
-            messageUtil.send(sender, enable ? "enabled-self" : "disabled-self");
+        messageUtil.send(sender, "invalid-usage");
+        return true;
+    }
+
+    private boolean handleToggleSelf(CommandSender sender) {
+        if (!(sender instanceof Player)) {
+            messageUtil.send(sender, "console-usage");
             return true;
         }
 
+        if (!sender.hasPermission(PERMISSION_USE)) {
+            messageUtil.send(sender, "no-permission");
+            return true;
+        }
+
+        Player player = (Player) sender;
+        boolean enabled = nightVisionService.toggleForPlayer(player);
+        messageUtil.send(sender, enabled ? "toggled-on" : "toggled-off");
+        return true;
+    }
+
+    private boolean handleSetSelf(CommandSender sender, boolean enable) {
+        if (!(sender instanceof Player)) {
+            messageUtil.send(sender, "console-usage");
+            return true;
+        }
+
+        if (!sender.hasPermission(PERMISSION_USE)) {
+            messageUtil.send(sender, "no-permission");
+            return true;
+        }
+
+        Player player = (Player) sender;
+        nightVisionService.setForPlayer(player, enable);
+        messageUtil.send(sender, enable ? "enabled-self" : "disabled-self");
+        return true;
+    }
+
+    private boolean handleSetOther(CommandSender sender, boolean enable, String targetName) {
         if (!canModifyOthers(sender)) {
             messageUtil.send(sender, "no-permission");
             return true;
         }
 
-        Player target = Bukkit.getPlayerExact(args[1]);
+        Player target = Bukkit.getPlayerExact(targetName);
         if (target == null) {
             messageUtil.send(sender, "player-not-found");
             return true;
@@ -77,7 +96,11 @@ public final class NightVisionCommand implements CommandExecutor {
 
         nightVisionService.setForPlayer(target, enable);
         messageUtil.send(sender, enable ? "enabled-other" : "disabled-other", "%player%", target.getName());
-        messageUtil.send(target, enable ? "enabled-self" : "disabled-self");
+
+        if (!sender.getName().equalsIgnoreCase(target.getName())) {
+            messageUtil.send(target, enable ? "enabled-self" : "disabled-self");
+        }
+
         return true;
     }
 

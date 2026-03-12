@@ -1,27 +1,28 @@
 name: EzNightVision
 main: com.ezinnovations.eznightvision.EzNightVision
 version: 1.0.0
-api-version: '1.16'
 author: EzInnovations
+
+description: Cross-version Night Vision toggle plugin for Bukkit-family servers.
 
 commands:
   nightvision:
-    description: Toggle Night Vision
+    description: Toggle or set Night Vision for yourself or another player.
     usage: /nightvision [on|off] [player]
     aliases: [nv]
   nv:
-    description: Alias for /nightvision
+    description: Alias of /nightvision.
     usage: /nv [on|off] [player]
 
 permissions:
   eznightvision.use:
-    description: Allows toggling your own Night Vision.
+    description: Allows toggling or setting your own Night Vision state.
     default: true
   eznightvision.others:
-    description: Allows enabling/disabling Night Vision for other players.
+    description: Allows enabling or disabling Night Vision for other players.
     default: op
   eznightvision.admin:
-    description: Grants broad administrative Night Vision control.
+    description: Administrative Night Vision control, including other players.
     default: op
     children:
       eznightvision.others: true
