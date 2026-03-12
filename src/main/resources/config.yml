@@ -1,0 +1,14 @@
+default-enabled: true
+
+messages:
+  prefix: "&8[&bEzNightVision&8] "
+  enabled-self: "&aNight Vision enabled."
+  disabled-self: "&cNight Vision disabled."
+  toggled-on: "&aNight Vision toggled on."
+  toggled-off: "&cNight Vision toggled off."
+  enabled-other: "&aEnabled Night Vision for &f%player%&a."
+  disabled-other: "&cDisabled Night Vision for &f%player%&c."
+  no-permission: "&cYou do not have permission to do that."
+  player-not-found: "&cThat player could not be found."
+  console-usage: "&cConsole must use /nightvision <on|off> <player>."
+  invalid-usage: "&eUsage: /nightvision [on|off] [player]"

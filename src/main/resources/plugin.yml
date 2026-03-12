@@ -1,0 +1,27 @@
+name: EzNightVision
+main: com.ezinnovations.eznightvision.EzNightVision
+version: 1.0.0
+api-version: '1.16'
+author: EzInnovations
+
+commands:
+  nightvision:
+    description: Toggle Night Vision
+    usage: /nightvision [on|off] [player]
+    aliases: [nv]
+  nv:
+    description: Alias for /nightvision
+    usage: /nv [on|off] [player]
+
+permissions:
+  eznightvision.use:
+    description: Allows toggling your own Night Vision.
+    default: true
+  eznightvision.others:
+    description: Allows enabling/disabling Night Vision for other players.
+    default: op
+  eznightvision.admin:
+    description: Grants broad administrative Night Vision control.
+    default: op
+    children:
+      eznightvision.others: true
